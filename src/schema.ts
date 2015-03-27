@@ -279,8 +279,28 @@ export class MetaSchema{
 
 function annotate_schema(node: Json.JValue, parent: any, key: string, api: SchemaAPI, model: blaze.Rules):SchemaNode {
     if (node.has("$ref")) {
+        //If the node as a constraint store it to add back after fetching the definition
+        var nodeConstraint;
+        if(node.has("constraint")) {
+            nodeConstraint = node.getOrThrow("constraint","");
+        }
         //we should replace this node with its definition
         node = fetchRef(node.getOrThrow("$ref", "").coerceString().value, model);
+
+        // If we had one earlier combine it with the constraints declared on ref
+        if(nodeConstraint) {
+
+            var combinedConstraint;
+            if(node.has("constraint")) {
+                var refConstraint = node.getOrThrow("constraint","");
+                combinedConstraint = new Json.JString('(' + nodeConstraint.coerceString().value + ') && (' + refConstraint.coerceString().value + ')', 0, 0);
+            } else {
+                combinedConstraint = nodeConstraint;
+            }
+
+
+            node.asObject().put(new Json.JString("constraint", 0, 0), combinedConstraint);
+        }
     }
 
     var annotation = new SchemaNode(node);
